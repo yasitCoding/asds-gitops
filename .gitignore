@@ -1,0 +1,33 @@
+# Environment files (contains secrets)
+.env
+.env.local
+.env.production
+.env.development
+**/.env
+**/.env.local
+**/.env.production
+**/.env.development
+
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+
+# Build
+.next/
+dist/
+build/
+
+# CI Build Artifacts
+trivy-report.json
+logs/
+edit.md

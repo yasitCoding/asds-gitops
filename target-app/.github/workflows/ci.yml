@@ -1,0 +1,118 @@
+name: DevSecOps CI Pipeline Evaluation
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-test-scan:
+    name: Build, Test, Trivy Scan & Notify Control Plane
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run Unit Tests
+        id: unit_tests
+        continue-on-error: true
+        run: |
+          mkdir -p logs
+          npm test > logs/test-output.log 2>&1
+          TEST_EXIT_CODE=$?
+          if [ $TEST_EXIT_CODE -eq 0 ]; then
+            echo "TEST_STATUS=passed" >> $GITHUB_ENV
+          else
+            echo "TEST_STATUS=failed" >> $GITHUB_ENV
+          fi
+          cat logs/test-output.log
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Container Image
+        run: |
+          IMAGE_TAG="docker.io/myorg/sample-app:${{ github.sha }}"
+          docker buildx build --load -t $IMAGE_TAG .
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
+
+      - name: Run Trivy Vulnerability Scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'docker.io/myorg/sample-app:${{ github.sha }}'
+          format: 'json'
+          output: 'trivy-report.json'
+        continue-on-error: true
+
+      - name: Prepare & Post Webhook Payload to Control Plane
+        env:
+          CONTROL_PLANE_URL: ${{ secrets.CONTROL_PLANE_URL || 'http://localhost:8000' }}
+          WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET || 'your-webhook-secret-key' }}
+          REPO_URL: ${{ github.repositoryUrl || 'https://github.com/myorg/sample-app.git' }}
+          COMMIT_HASH: ${{ github.sha }}
+        run: |
+          # Format JSON payload using python script or jq
+          python3 -c "
+          import json, os, hmac, hashlib, urllib.request
+
+          control_plane_url = os.environ.get('CONTROL_PLANE_URL', 'http://localhost:8000').rstrip('/')
+          webhook_secret = os.environ.get('WEBHOOK_SECRET', 'your-webhook-secret-key')
+
+          test_status = os.environ.get('TEST_STATUS', 'passed')
+          test_output = ''
+          if os.path.exists('logs/test-output.log'):
+              with open('logs/test-output.log', 'r') as f:
+                  test_output = f.read()
+
+          trivy_report = {}
+          if os.path.exists('trivy-report.json'):
+              try:
+                  with open('trivy-report.json', 'r') as f:
+                      trivy_report = json.load(f)
+              except Exception as e:
+                  print(f'Warning loading trivy report: {e}')
+
+          manifest_yaml = ''
+          if os.path.exists('deployment.yaml'):
+              with open('deployment.yaml', 'r') as f:
+                  manifest_yaml = f.read()
+
+          payload = {
+              'repository_url': os.environ.get('REPO_URL', 'https://github.com/myorg/sample-app.git'),
+              'commit_hash': os.environ.get('COMMIT_HASH', '0000000000000000000000000000000000000000'),
+              'image_tag': os.environ.get('IMAGE_TAG', 'docker.io/myorg/sample-app:latest'),
+              'test_status': test_status,
+              'test_output': test_output,
+              'trivy_report': trivy_report,
+              'manifest_yaml': manifest_yaml
+          }
+
+          raw_bytes = json.dumps(payload).encode('utf-8')
+          signature = 'sha256=' + hmac.new(webhook_secret.encode('utf-8'), raw_bytes, hashlib.sha256).hexdigest()
+
+          req = urllib.request.Request(
+              f'{control_plane_url}/api/v1/pipeline/webhook',
+              data=raw_bytes,
+              headers={
+                  'Content-Type': 'application/json',
+                  'X-Hub-Signature-256': signature
+              },
+              method='POST'
+          )
+
+          try:
+              with urllib.request.urlopen(req) as resp:
+                  print(f'Webhook HTTP {resp.status}: {resp.read().decode(\"utf-8\")}')
+          except Exception as e:
+              print(f'Failed to post webhook: {e}')
+          "

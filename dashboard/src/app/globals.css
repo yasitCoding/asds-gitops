@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 240 5% 96%;        /* #f5f5f7 Apple off-white */
+    --foreground: 240 6% 10%;        /* #1d1d1f Apple deep charcoal */
+    --card: 0 0% 100%;               /* #ffffff pure white */
+    --card-foreground: 240 6% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 6% 10%;
+    --primary: 211 100% 45%;         /* #0071e3 Apple System Blue */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 5% 92%;
+    --secondary-foreground: 240 6% 10%;
+    --muted: 240 5% 92%;
+    --muted-foreground: 240 4% 46%;  /* #86868b Apple secondary gray */
+    --accent: 240 5% 96%;
+    --accent-foreground: 240 6% 10%;
+    --destructive: 356 100% 59%;     /* #ff3b30 Apple System Red */
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 6% 90%;            /* #e5e5ea Apple border */
+    --input: 240 6% 90%;
+    --ring: 211 100% 45%;
+    --radius: 0.875rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-[#f5f5f7] text-[#1d1d1f] antialiased selection:bg-blue-100 selection:text-blue-900;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+}
+
+.apple-card {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.apple-card:hover {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
+}

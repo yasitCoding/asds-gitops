@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  opa:
+    image: openpolicyagent/opa:latest-server
+    container_name: csc492-opa-engine
+    ports:
+      - "8181:8181"
+    volumes:
+      - ./policies:/policies
+    command:
+      - "run"
+      - "--server"
+      - "--addr=0.0.0.0:8181"
+      - "--set=decision_logs.console=true"
+      - "/policies"
+    restart: always
+
+  control-plane:
+    build:
+      context: ./control-plane
+      dockerfile: Dockerfile
+    container_name: csc492-control-plane
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./control-plane/.env
+    environment:
+      - OPA_URL=http://opa:8181/v1/data
+    depends_on:
+      - opa
+    restart: always
