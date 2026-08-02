@@ -30,4 +30,4 @@ build/
 # CI Build Artifacts
 trivy-report.json
 logs/
-edit.md
+plan.md
