@@ -24,31 +24,27 @@ class PipelineRecorderService:
     def __init__(self, session: Session):
         self.session = session
 
-    def get_or_create_repository(
-        self,
-        repo_url: str,
-        image_name: str = "app",
-        namespace: str = "default",
-        branch: str = "main",
-        webhook_secret: str = "default-secret"
-    ) -> Repository:
-        """Finds existing repository by URL or creates a new registration."""
+    def get_repository_by_url(self, repo_url: str) -> Optional[Repository]:
+        """Finds a pre-registered repository by URL without creating records."""
         statement = select(Repository).where(Repository.repo_url == repo_url)
-        repo = self.session.exec(statement).first()
-        if not repo:
-            repo_name = repo_url.rstrip("/").split("/")[-1].replace(".git", "")
-            repo = Repository(
-                repo_url=repo_url,
-                repo_name=repo_name,
-                image_name=image_name,
-                namespace=namespace,
-                branch=branch,
-                webhook_secret=webhook_secret,
+        return self.session.exec(statement).first()
+
+    def get_pipeline_run(
+        self,
+        pipeline_run_id: Optional[int] = None,
+        commit_hash: Optional[str] = None,
+        image_tag: Optional[str] = None,
+    ) -> Optional[PipelineRun]:
+        """Find a pipeline run by ID or its immutable CI identifiers."""
+        if pipeline_run_id is not None:
+            return self.session.get(PipelineRun, pipeline_run_id)
+        if commit_hash and image_tag:
+            statement = select(PipelineRun).where(
+                PipelineRun.commit_hash == commit_hash,
+                PipelineRun.image_tag == image_tag,
             )
-            self.session.add(repo)
-            self.session.commit()
-            self.session.refresh(repo)
-        return repo
+            return self.session.exec(statement).first()
+        return None
 
     def create_pipeline_run(
         self,

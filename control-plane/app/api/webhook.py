@@ -1,10 +1,9 @@
-import os
 import logging
 import yaml
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, List, Literal, Optional
 from fastapi import APIRouter, Header, HTTPException, Request, Depends, status
 from pydantic import BaseModel, Field
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from app.core.database import get_session
 from app.core.security import verify_github_hmac_signature
@@ -12,6 +11,7 @@ from app.services.trivy_parser import TrivyParserService
 from app.services.opa_client import OPAClientService, OPAEvaluationResult
 from app.services.git_service import GitManifestService
 from app.services.pipeline_service import PipelineRecorderService
+from app.models import PolicyRule
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +21,7 @@ class WebhookPayload(BaseModel):
     repository_url: str = Field(..., description="Git repository URL")
     commit_hash: str = Field(..., min_length=7, max_length=40, description="Git commit hash")
     image_tag: str = Field(..., description="Docker image tag (e.g. app:v1.0.0)")
-    test_status: Optional[str] = Field(default="passed", description="Unit test status: passed or failed")
+    test_status: Literal["passed", "failed"] = Field(..., description="Unit test status")
     test_output: Optional[str] = Field(default=None, description="Raw test output log")
     trivy_report: Optional[Dict[str, Any]] = Field(default=None, description="Trivy vulnerability scan report JSON")
     manifest_yaml: Optional[str] = Field(default=None, description="Kubernetes deployment manifest YAML string")
@@ -48,25 +48,32 @@ async def receive_pipeline_webhook(
     Webhook endpoint to receive test results, Trivy scan report, and Kubernetes Manifest.
     Verifies HMAC Signature (X-Hub-Signature-256), evaluates OPA rules, and records audit trail & notification log to Database.
     """
-    logger.info(f"Received webhook for repo={payload.repository_url}, commit={payload.commit_hash}, tag={payload.image_tag}")
-
     recorder = PipelineRecorderService(db_session)
-    repo = recorder.get_or_create_repository(repo_url=payload.repository_url)
+    repo = recorder.get_repository_by_url(repo_url=payload.repository_url)
+    if repo is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Repository is not registered in the control plane.",
+        )
 
     # 1. Verify HMAC Signature (Security Gate)
-    webhook_secret = os.getenv("WEBHOOK_SECRET") or repo.webhook_secret
-    if x_hub_signature_256 and webhook_secret and webhook_secret != "your-webhook-secret-key":
-        raw_body = await request.body()
-        is_valid_sig = verify_github_hmac_signature(
-            raw_body=raw_body,
-            secret=webhook_secret,
-            signature_header=x_hub_signature_256
+    raw_body = await request.body()
+    if not x_hub_signature_256 or not verify_github_hmac_signature(
+        raw_body=raw_body,
+        secret=repo.webhook_secret,
+        signature_header=x_hub_signature_256,
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or missing X-Hub-Signature-256 webhook signature.",
         )
-        if not is_valid_sig:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid X-Hub-Signature-256 webhook signature. Access denied."
-            )
+
+    logger.info(
+        "Received verified webhook for repo=%s, commit=%s, tag=%s",
+        payload.repository_url,
+        payload.commit_hash,
+        payload.image_tag,
+    )
 
     # 2. Parse Trivy Scan Report
     summary, vulnerabilities = TrivyParserService.parse_scan_report(
@@ -105,11 +112,29 @@ async def receive_pipeline_webhook(
     # 5. Evaluate via OPA Client
     opa_service = OPAClientService()
     scan_results_dict = [v.model_dump() for v in vulnerabilities]
+    enabled_rule_names = {
+        "unit_test": "Unit Test Policy",
+        "cve_threshold": "CVE Threshold Policy",
+        "run_as_non_root": "RunAsNonRoot Policy",
+        "resource_limits": "Resource Limits Policy",
+        "trusted_registry": "Trusted Registry Policy",
+    }
+    enabled_policies = {
+        package_name
+        for package_name, rule_name in enabled_rule_names.items()
+        if (
+            db_session.exec(
+                select(PolicyRule.enabled).where(PolicyRule.rule_name == rule_name)
+            ).first()
+            is True
+        )
+    }
 
     eval_result: OPAEvaluationResult = await opa_service.evaluate_all_policies(
         test_status=payload.test_status,
         scan_results=scan_results_dict,
-        manifest_data=manifest_dict
+        manifest_data=manifest_dict,
+        enabled_policies=enabled_policies,
     )
 
     # 6. Handle Execution Decision (Passed vs Failed)
@@ -142,23 +167,37 @@ async def receive_pipeline_webhook(
         commit_hash=payload.commit_hash,
     )
 
-    final_status = "deployed" if git_success else "passed"
+    if not git_success:
+        pipeline_run.status = "failed"
+        db_session.add(pipeline_run)
+        db_session.commit()
+        recorder.record_notification_log(
+            pipeline_run_id=pipeline_run.id,
+            message_content=(
+                f"Pipeline run #{pipeline_run.id} failed while updating the GitOps manifest."
+            ),
+        )
+        return WebhookResponse(
+            status="failed",
+            pipeline_run_id=pipeline_run.id,
+            message="Policy evaluation passed, but the GitOps manifest update failed.",
+            violations=[],
+        )
+
+    # ArgoCD confirmation is a separate event; this webhook only proves policy
+    # evaluation and manifest push succeeded.
+    final_status = "passed"
     pipeline_run.status = final_status
     db_session.add(pipeline_run)
     db_session.commit()
 
-    if git_success:
-        recorder.record_deployment(
-            pipeline_run_id=pipeline_run.id,
-            argocd_app_name=f"{repo.repo_name}-app",
-            cluster_namespace=repo.namespace,
-            deployment_status="synced",
-        )
-
-    # Log Notification: Pipeline Deployed / Passed
+    # TODO: Add an ArgoCD callback before recording a deployed status.
     recorder.record_notification_log(
         pipeline_run_id=pipeline_run.id,
-        message_content=f"Pipeline run #{pipeline_run.id} passed all policy checks and was successfully marked as '{final_status}'"
+        message_content=(
+            f"Pipeline run #{pipeline_run.id} passed all policy checks and pushed "
+            "the manifest; awaiting ArgoCD confirmation."
+        ),
     )
 
     return WebhookResponse(

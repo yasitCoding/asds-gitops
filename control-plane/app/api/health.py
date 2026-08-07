@@ -2,7 +2,9 @@ import os
 import logging
 from datetime import datetime, timezone
 import httpx
-from fastapi import APIRouter, Depends, status, Response
+from typing import Any
+
+from fastapi import APIRouter, Depends, Response, status
 from sqlmodel import Session, text
 
 from app.core.database import get_session
@@ -18,7 +20,7 @@ router = APIRouter(tags=["Health Check"])
 async def health_check(
     response: Response,
     db_session: Session = Depends(get_session)
-):
+) -> dict[str, Any]:
     """
     Checks status of Control Plane Gateway, Database connection, and OPA Engine.
     Returns HTTP 200 OK if healthy, HTTP 503 if any core dependency fails.
@@ -37,9 +39,9 @@ async def health_check(
     try:
         db_session.exec(text("SELECT 1"))
         health_status["services"]["database"] = "connected"
-    except Exception as e:
-        logger.error(f"Health check failed - Database error: {e}")
-        health_status["services"]["database"] = f"unreachable ({str(e)})"
+    except Exception:
+        logger.exception("Health check failed - Database error")
+        health_status["services"]["database"] = "unreachable"
         is_healthy = False
 
     # 2. Test OPA Engine Connectivity
@@ -54,9 +56,9 @@ async def health_check(
             else:
                 health_status["services"]["opa_engine"] = f"degraded (HTTP {opa_resp.status_code})"
                 is_healthy = False
-    except Exception as e:
-        logger.warning(f"Health check warning - OPA Engine error: {e}")
-        health_status["services"]["opa_engine"] = f"unreachable ({str(e)})"
+    except Exception:
+        logger.exception("Health check warning - OPA Engine error")
+        health_status["services"]["opa_engine"] = "unreachable"
         is_healthy = False
 
     if not is_healthy:

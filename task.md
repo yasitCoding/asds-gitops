@@ -72,12 +72,29 @@
 
 ## 📌 Phase 7: การตรวจสอบความพร้อม การปรับปรุงโค้ด และการนำขึ้นระบบ (Polishing & Deployment)
 - [x] **Task 7.0:** แก้ไขตาม `edit.md` จากผลรีวิว Senior DevSecOps (5 ข้อ: CORS env var, datetime deprecation, Dockerfile non-root, .gitignore pattern, Header health check)
-- [ ] **Task 7.1:** ตรวจสอบ Format และ Linting โค้ดทั้งหมดด้วย Biome
+- [x] **Task 7.0a:** แก้ไขตามแผนรีวิวรอบ 2 ครบ Critical/High และตั้ง Project Rules (HMAC, repository lookup, image tag, secret masking, CI fail-closed, OPA/status logic, CRUD/trend, rules files)
+- [x] **Task 7.0b:** ปิดช่องว่าง End-to-End ตาม `plan.md` (policy toggle, ArgoCD deployed callback, Trivy webhook, correctness fixes M1–M6)
+- [x] **Task 7.1:** ตรวจสอบ Format และ Linting โค้ดทั้งหมดด้วย Biome
 - [ ] **Task 7.2:** Deploy Web Dashboard ขึ้น Vercel
+  - [ ] **7.2-prep:** ทดลองลงทะเบียนโปรเจกต์จริง / repo จริงผ่านหน้า `/repositories` (local) ก่อนขึ้น Vercel
+  - [ ] **7.2a:** Push โค้ดขึ้น GitHub (branch ที่จะ deploy)
+  - [ ] **7.2b:** ตรวจว่า Supabase มีตารางครบ (รัน `db_init.sql` / seed แล้ว)
+  - [ ] **7.2c:** สร้าง Vercel project → Root Directory = `dashboard`
+  - [ ] **7.2d:** ตั้ง env บน Vercel: `DATABASE_URL` (แนะนำ pooler `:6543`), `CONTROL_PLANE_URL` (URL สาธารณะของ CP ถ้ามี)
+  - [ ] **7.2e:** Deploy แล้ว smoke test `/dashboard`, `/repositories`, `/pipelines`, `/policies`
+  - [ ] **7.2f:** หลังได้โดเมน Vercel ใส่ใน CP `CORS_ALLOWED_ORIGINS` แล้ว restart CP
+  - [ ] **7.2g:** ติ๊ก Task 7.2 หลัก + ลง Progress Log เมื่อ deploy สำเร็จ
+
+> **หมายเหตุ:** Control Plane + OPA ไม่ขึ้น Vercel — รันด้วย `docker compose` / เครื่องตัวเอง  
+> **คู่มือเข้าใจโครงสร้างโปรเจกต์:** เปิดไฟล์ [`project-overview.html`](./project-overview.html) ในเบราว์เซอร์
 
 ---
 
 ## 📝 Recent Progress Log
+* **2026-08-08:** เพิ่ม checklist Task 7.2 (ยังไม่ deploy) และสร้าง `project-overview.html` อธิบายโครงสร้าง/บทบาทแต่ละโฟลเดอร์สำหรับเจ้าของโปรเจกต์; แนะนำลำดับถัดไป = ทดลองลงทะเบียน repo จริงบน local ก่อน Vercel
+* **2026-08-07:** รีวิวรอบ 2 ตาม `plan.md` เสร็จสิ้น — แก้ Critical/High security และ correctness issues, เพิ่ม dashboard CRUD/CVE trend/remediation helper, ทำ Biome `dashboard/src` และ TypeScript check ผ่าน, เพิ่ม Cursor Project Rules; ยังไม่ทำ Vercel deploy (Task 7.2)
+* **2026-08-07:** ปิด gap ตาม `plan.md` — policy toggle query `enabled`, authenticated ArgoCD callback บันทึก `deployed`/deployment/notification, CI โพสต์ webhook หลัง Trivy fail, แก้ OPA unavailable status, image replacement scope, non-root fallback, policy seed source, analytics active count และ health loading state (เสร็จสิ้น Task 7.0b)
+* **2026-08-08:** แก้ regression ใน `git_service.py` จาก replacement backreference `\g<4>` เป็น `\g<3>` และทดสอบไม่ให้กระทบ image อื่น
 * **2026-08-02:** ดำเนินการแก้ไขตาม `edit.md` ครบทั้ง 5 ข้อ (1. CORS read from env var, 2. Replace `datetime.utcnow` with `datetime.now(timezone.utc)`, 3. Add non-root `appuser` in Dockerfile, 4. Update `.gitignore` with wildcard env patterns, 5. Add dynamic health check proxy route and query in Header) และลบไฟล์ `edit.md` เรียบร้อยแล้ว (เสร็จสิ้น Task 7.0)
 * **2026-08-02:** Senior DevSecOps Review (Phase 1-6) เสร็จสิ้น — พบ 5 ข้อที่ต้องแก้ไข (2 Critical: CORS wildcard, datetime.utcnow deprecation / 3 Medium: Dockerfile non-root user, .gitignore pattern, Header health check static text) บันทึกรายละเอียดไว้ใน `edit.md` สำหรับ AI Model ราคาถูกดำเนินการ
 * **2026-08-02:** สร้างชุดทดสอบอัตโนมัติ 5 สถานการณ์ (Scenarios A - E) ในไฟล์ `/scripts/test_scenarios.py` สำหรับจำลองการยิง Webhook Payload ทดสอบการตัดสินใจของ FastAPI Control Plane Gateway และ OPA Engine ครบทั้ง 5 รูปแบบ (All Pass, Test Failed, Critical CVE, Missing Resource Limits, RunAsRoot) (เสร็จสิ้น Task 6.3 — สิ้นสุด Phase 6 🎉)

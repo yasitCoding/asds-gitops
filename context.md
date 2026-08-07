@@ -132,11 +132,14 @@ CSC492/
 
 **Control Plane Gateway (FastAPI) — Base URL: `http://localhost:8000`**
 
+> Pipeline history is read from the shared PostgreSQL database by Dashboard
+> through Drizzle. The endpoints below are reserved for the webhook, deployment
+> callback, and health checks; there is no separate read API layer in the MVP.
+
 | Method | Endpoint | Description | Request Body / Params |
 | :--- | :--- | :--- | :--- |
 | `POST` | `/api/v1/pipeline/webhook` | รับ Payload จาก GitHub Actions (Test + Scan + Manifest) | JSON Payload (ดู Section 2.1) |
-| `GET` | `/api/v1/pipeline/runs` | ดึงประวัติ Pipeline Runs ทั้งหมด (สำรอง) | Query: `?repo_id=`, `?status=` |
-| `GET` | `/api/v1/pipeline/runs/{id}` | ดึงรายละเอียด Pipeline Run เฉพาะรายการ | Path: `id` |
+| `POST` | `/api/v1/pipeline/deployed` | รับผลยืนยันการ deploy จาก ArgoCD (ต้องมี callback token) | `pipeline_run_id` หรือ `commit_hash` + `image_tag`, ArgoCD status |
 | `GET` | `/health` | Health Check Endpoint | — |
 
 **Dashboard (Next.js) — อ่านข้อมูลตรงจาก Supabase DB ผ่าน Drizzle ORM (Server Components / Server Actions)**

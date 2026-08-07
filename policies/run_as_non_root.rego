@@ -6,12 +6,22 @@ allow {
     input.manifest.spec.template.spec.securityContext.runAsNonRoot == true
 }
 
-violation[msg] {
-    not input.manifest.spec.template.spec.securityContext.runAsNonRoot
-    msg := "Security context 'runAsNonRoot' must be set to true"
+allow {
+    count(input.manifest.spec.template.spec.containers) > 0
+    every container in input.manifest.spec.template.spec.containers {
+        container.securityContext.runAsNonRoot == true
+    }
 }
 
 violation[msg] {
-    input.manifest.spec.template.spec.securityContext.runAsNonRoot == false
-    msg := "Container is configured to run as root ('runAsNonRoot' is false)"
+    not input.manifest.spec.template.spec.securityContext.runAsNonRoot == true
+    not every_container_is_non_root
+    msg := "Pod or every container must set 'runAsNonRoot' to true"
+}
+
+every_container_is_non_root {
+    count(input.manifest.spec.template.spec.containers) > 0
+    every container in input.manifest.spec.template.spec.containers {
+        container.securityContext.runAsNonRoot == true
+    }
 }

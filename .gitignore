@@ -31,3 +31,4 @@ build/
 trivy-report.json
 logs/
 plan.md
+project-overview.html

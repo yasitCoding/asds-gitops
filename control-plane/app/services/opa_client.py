@@ -1,6 +1,6 @@
 import os
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 import httpx
 from pydantic import BaseModel
 
@@ -37,8 +37,19 @@ class OPAClientService:
                 response.raise_for_status()
                 return response.json().get("result", {})
         except Exception as e:
-            logger.warning(f"OPA server connection failed ({e}), performing local policy evaluation fallback for package '{package_name}'")
-            return self._fallback_local_evaluation(package_name, input_data)
+            if os.getenv("OPA_ALLOW_LOCAL_FALLBACK", "false").lower() == "true":
+                logger.warning(
+                    "OPA unavailable (%s); using explicitly enabled local fallback for '%s'",
+                    e,
+                    package_name,
+                )
+                return self._fallback_local_evaluation(package_name, input_data)
+            logger.error("OPA server unavailable for '%s': %s", package_name, e)
+            return {
+                "allow": False,
+                "violation": [f"OPA policy service unavailable for '{package_name}'"],
+                "opa_unavailable": True,
+            }
 
     def _fallback_local_evaluation(self, package_name: str, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """Local Python evaluation fallback matching policies/*.rego rules when OPA REST server is offline."""
@@ -74,10 +85,17 @@ class OPAClientService:
             pass
 
         if package_name == "run_as_non_root":
-            is_non_root = security_context.get("runAsNonRoot") is True
+            pod_is_non_root = security_context.get("runAsNonRoot") is True
+            containers_are_non_root = bool(containers) and all(
+                container.get("securityContext", {}).get("runAsNonRoot") is True
+                for container in containers
+            )
+            is_non_root = pod_is_non_root or containers_are_non_root
             return {
                 "allow": is_non_root,
-                "violation": [] if is_non_root else ["Container securityContext 'runAsNonRoot' must be set to true"]
+                "violation": []
+                if is_non_root
+                else ["Pod or every container must set 'runAsNonRoot' to true"],
             }
 
         if package_name == "resource_limits":
@@ -108,7 +126,8 @@ class OPAClientService:
         self,
         test_status: Optional[str],
         scan_results: List[Dict[str, Any]],
-        manifest_data: Optional[Dict[str, Any]]
+        manifest_data: Optional[Dict[str, Any]],
+        enabled_policies: Optional[Set[str]] = None,
     ) -> OPAEvaluationResult:
         """
         Evaluates input against all 5 core security policy rules:
@@ -124,11 +143,28 @@ class OPAClientService:
             "manifest": manifest_data or {},
         }
 
+        enabled = (
+            enabled_policies
+            if enabled_policies is not None
+            else {
+                "unit_test",
+                "cve_threshold",
+                "run_as_non_root",
+                "resource_limits",
+                "trusted_registry",
+            }
+        )
         all_violations: List[str] = []
         violation_details: List[Dict[str, Any]] = []
 
         # 1. Unit Test Policy
-        unit_res = await self.evaluate_policy("unit_test", input_payload)
+        unit_res = (
+            await self.evaluate_policy("unit_test", input_payload)
+            if "unit_test" in enabled
+            else {"allow": True}
+        )
+        if unit_res.get("opa_unavailable"):
+            return self._opa_unavailable_result("unit_test", unit_res)
         if not unit_res.get("allow", False):
             violations = unit_res.get("violation", [f"Unit test status is '{test_status}'"])
             all_violations.extend(violations)
@@ -140,7 +176,13 @@ class OPAClientService:
             )
 
         # 2. CVE Threshold Policy
-        cve_res = await self.evaluate_policy("cve_threshold", input_payload)
+        cve_res = (
+            await self.evaluate_policy("cve_threshold", input_payload)
+            if "cve_threshold" in enabled
+            else {"allow": True}
+        )
+        if cve_res.get("opa_unavailable"):
+            return self._opa_unavailable_result("cve_threshold", cve_res)
         if not cve_res.get("allow", False):
             violations = cve_res.get("violation", ["CVE threshold policy failed"])
             all_violations.extend(violations)
@@ -156,7 +198,11 @@ class OPAClientService:
         has_policy_failure = False
 
         for pol_name in manifest_policies:
+            if pol_name not in enabled:
+                continue
             pol_res = await self.evaluate_policy(pol_name, input_payload)
+            if pol_res.get("opa_unavailable"):
+                return self._opa_unavailable_result(pol_name, pol_res)
             if not pol_res.get("allow", False):
                 has_policy_failure = True
                 violations = pol_res.get("violation", [f"Policy '{pol_name}' evaluation failed"])
@@ -178,4 +224,20 @@ class OPAClientService:
             status_code="passed",
             violations=[],
             violation_details=[]
+        )
+
+    @staticmethod
+    def _opa_unavailable_result(
+        package_name: str,
+        response: Dict[str, Any],
+    ) -> OPAEvaluationResult:
+        violations = response.get(
+            "violation",
+            [f"OPA policy service unavailable for '{package_name}'"],
+        )
+        return OPAEvaluationResult(
+            is_allowed=False,
+            status_code="failed",
+            violations=violations,
+            violation_details=[{"policy": package_name, "detail": violation} for violation in violations],
         )

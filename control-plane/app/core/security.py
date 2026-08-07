@@ -14,10 +14,9 @@ def verify_github_hmac_signature(
     Verifies GitHub Webhook HMAC SHA-256 Signature (X-Hub-Signature-256).
     Header format: sha256=<hex_digest>
     """
-    if not secret:
-        # If secret is not configured, skip verification with warning
-        logger.warning("WEBHOOK_SECRET is not set. Skipping HMAC signature verification.")
-        return True
+    if not secret or secret in {"your-webhook-secret-key", "default-secret"}:
+        logger.error("Webhook secret is missing or uses a placeholder value.")
+        return False
 
     if not signature_header:
         logger.error("Missing X-Hub-Signature-256 header in webhook request.")

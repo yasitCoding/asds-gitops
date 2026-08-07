@@ -27,3 +27,24 @@
 4. **การทำงานของ GitOps Sync**:
    - เมื่อ FastAPI Control Plane Gateway ประเมินผล OPA Policy สำเร็จ จะทำการ Commit & Push อัปเดต Image Tag ใน repository `gitops-manifests`
    - ArgoCD จะตรวจพบความเปลี่ยนแปลงและสั่ง Sync นำ Manifest ล่าสุดมา Apply บน Kubernetes Cluster โดยอัตโนมัติ (Automated Self-healing & Pruning)
+
+## 📣 Deployment Callback
+
+หลัง ArgoCD Sync สำเร็จ ให้ส่ง callback ไปยัง Control Plane เพื่อเปลี่ยนสถานะ
+pipeline จาก `passed` เป็น `deployed` และสร้าง audit records ใน `deployments`
+และ `notifications_log`:
+
+```bash
+curl -X POST "$CONTROL_PLANE_URL/api/v1/pipeline/deployed" \
+  -H "Content-Type: application/json" \
+  -H "X-ArgoCD-Callback-Token: $ARGOCD_CALLBACK_TOKEN" \
+  -d '{
+    "pipeline_run_id": 123,
+    "argocd_app_name": "sample-app",
+    "cluster_namespace": "default",
+    "deployment_status": "synced"
+  }'
+```
+
+ตั้งค่า `ARGOCD_CALLBACK_TOKEN` ใน Control Plane และส่งค่าเดียวกันจาก
+ArgoCD Notification หรือ Job เท่านั้น ห้ามเปิด endpoint โดยไม่มี token

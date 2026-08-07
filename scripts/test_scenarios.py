@@ -2,10 +2,12 @@ import json
 import hmac
 import hashlib
 import urllib.request
+import urllib.error
 import os
 
 BASE_URL = os.getenv("CONTROL_PLANE_URL", "http://localhost:8000")
-WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "your-webhook-secret-key")
+WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "")
+ARGOCD_CALLBACK_TOKEN = os.getenv("ARGOCD_CALLBACK_TOKEN", "")
 
 # Sample Valid Manifest
 VALID_MANIFEST = """
@@ -98,6 +100,37 @@ def send_webhook(name: str, payload: dict) -> dict:
         print(f"⚠️ Failed to connect to Control Plane ({BASE_URL}): {e}")
         return {"status": "connection_error", "message": str(e)}
 
+
+def send_deployment_callback(pipeline_run_id: int) -> dict:
+    if not ARGOCD_CALLBACK_TOKEN:
+        print("\nℹ️ Skipping optional Scenario A2 deployed callback: ARGOCD_CALLBACK_TOKEN is not set")
+        return {"status": "skipped"}
+
+    url = f"{BASE_URL.rstrip('/')}/api/v1/pipeline/deployed"
+    payload = {
+        "pipeline_run_id": pipeline_run_id,
+        "argocd_app_name": "sample-app",
+        "cluster_namespace": "default",
+        "deployment_status": "synced",
+    }
+    raw_bytes = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(
+        url,
+        data=raw_bytes,
+        headers={
+            "Content-Type": "application/json",
+            "X-ArgoCD-Callback-Token": ARGOCD_CALLBACK_TOKEN,
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+    except Exception as e:
+        print(f"❌ Failed to post deployment callback: {e}")
+        return {"status": "callback_error", "message": str(e)}
+
+
 def run_all_scenarios():
     results = {}
 
@@ -116,6 +149,8 @@ def run_all_scenarios():
         },
         "manifest_yaml": VALID_MANIFEST
     })
+    if results["A"].get("pipeline_run_id"):
+        results["A2"] = send_deployment_callback(results["A"]["pipeline_run_id"])
 
     # Scenario B: Unit Test Failed
     results["B"] = send_webhook("Scenario B: Unit Test Failed", {
@@ -173,14 +208,42 @@ def run_all_scenarios():
         "manifest_yaml": ROOT_MANIFEST
     })
 
+    expected_statuses = {
+        "A": "passed",
+        "B": "test_failed",
+        "C": "scan_failed",
+        "D": "policy_failed",
+        "E": "policy_failed",
+    }
+    failures = 0
+
     print("\n=======================================================")
     print("📊 SCENARIOS EVALUATION SUMMARY")
     print("=======================================================")
     for scenario_id, data in results.items():
+        if scenario_id == "A2":
+            expected = "deployed"
+            status = data.get("status") or data.get("error") or "Unknown"
+            if status != expected and status != "skipped":
+                failures += 1
+                print(f"Scenario A2: FAIL — expected '{expected}', got '{status}'")
+            else:
+                print(f"Scenario A2: PASS — status '{status}'")
+            continue
         status = data.get("status") or data.get("error") or "Unknown"
         violations = data.get("violations", [])
         v_str = f" Violations: {violations}" if violations else ""
-        print(f"Scenario {scenario_id}: Status = '{status}'{v_str}")
+        expected = expected_statuses[scenario_id]
+        if status != expected:
+            failures += 1
+            print(
+                f"Scenario {scenario_id}: FAIL — expected '{expected}', got '{status}'{v_str}"
+            )
+        else:
+            print(f"Scenario {scenario_id}: PASS — status '{status}'{v_str}")
+
+    print(f"\nResult: {len(results) - failures}/{len(expected_statuses)} scenarios passed")
+    return failures
 
 if __name__ == "__main__":
-    run_all_scenarios()
+    raise SystemExit(run_all_scenarios())

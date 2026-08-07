@@ -14,6 +14,11 @@ services:
       - "--addr=0.0.0.0:8181"
       - "--set=decision_logs.console=true"
       - "/policies"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8181/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     restart: always
 
   control-plane:
@@ -27,6 +32,15 @@ services:
       - ./control-plane/.env
     environment:
       - OPA_URL=http://opa:8181/v1/data
+    healthcheck:
+      test:
+        - "CMD"
+        - "python"
+        - "-c"
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
+      interval: 10s
+      timeout: 5s
+      retries: 5
     depends_on:
       - opa
     restart: always

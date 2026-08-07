@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.webhook import router as webhook_router
 from app.api.health import router as health_router
+from app.api.deployed import router as deployed_router
 
 app = FastAPI(
     title="Control Plane Gateway API",
@@ -12,7 +13,7 @@ app = FastAPI(
 )
 
 # CORS Middleware
-allowed_origins_raw = os.getenv("CORS_ALLOWED_ORIGINS", "*")
+allowed_origins_raw = os.getenv("CORS_ALLOWED_ORIGINS", "")
 allowed_origins = [origin.strip() for origin in allowed_origins_raw.split(",") if origin.strip()]
 
 app.add_middleware(
@@ -26,9 +27,10 @@ app.add_middleware(
 # Mount API Routers
 app.include_router(health_router)
 app.include_router(webhook_router)
+app.include_router(deployed_router)
 
 @app.get("/", tags=["Root"])
-async def root():
+async def root() -> dict[str, str]:
     return {
         "service": "Control Plane Gateway",
         "status": "online",

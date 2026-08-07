@@ -42,6 +42,19 @@ class GitManifestService:
         Clones manifest repo, updates container image tag in deployment YAML,
         commits changes, and pushes back to Git repository for ArgoCD sync.
         """
+        tag_match = re.search(r":([^:/]+)$", new_image_tag)
+        if not tag_match:
+            logger.error("Invalid image reference '%s': missing Docker tag.", new_image_tag)
+            return False
+        tag = tag_match.group(1)
+        if not re.fullmatch(r"[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}", tag):
+            logger.error("Invalid Docker image tag '%s'.", tag)
+            return False
+
+        if not image_name or ":" in image_name.rsplit("/", 1)[-1]:
+            logger.error("Registered image name '%s' is invalid.", image_name)
+            return False
+
         if not self.repo_url:
             logger.error("GIT_MANIFEST_REPO_URL is not set. Skipping GitOps auto-commit.")
             return False
@@ -77,12 +90,14 @@ class GitManifestService:
             with open(file_path, "r", encoding="utf-8") as f:
                 content = f.read()
 
-            # Update image tag using regex pattern (e.g. image: repo/app:old_tag -> image: repo/app:new_tag)
-            # Pattern matches 'image: <image_name>:<tag>' or 'image: <any_image>:<tag>'
-            image_pattern = r"(image:\s*[\"']?)([^\s\"':]+)(:[^\s\"']*)?([\"']?)"
+            # Update only the registered image; unrelated container images must remain unchanged.
+            image_pattern = (
+                rf"(image:\s*[\"']?){re.escape(image_name)}"
+                r"(:[^\s\"']*)?([\"']?)"
+            )
             updated_content = re.sub(
                 image_pattern,
-                rf"\g<1>{image_name}:{new_image_tag}\g<4>",
+                rf"\g<1>{image_name}:{tag}\g<3>",
                 content
             )
 
@@ -96,13 +111,13 @@ class GitManifestService:
 
             # Git commit and push
             repo.git.add(A=True)
-            commit_message = f"[GitOps Auto-Deploy] Update image tag to {new_image_tag} (commit: {commit_hash[:7]})"
+            commit_message = f"[GitOps Auto-Deploy] Update image tag to {tag} (commit: {commit_hash[:7]})"
             repo.index.commit(commit_message)
 
             origin = repo.remote(name="origin")
             origin.push()
 
-            logger.info(f"Successfully pushed updated manifest image tag '{new_image_tag}' to {self.repo_url}")
+            logger.info("Successfully pushed updated manifest image tag '%s' to %s", tag, self.repo_url)
             return True
 
         except Exception as e:

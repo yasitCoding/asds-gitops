@@ -8,6 +8,7 @@ metadata:
 spec:
   project: default
   source:
+    # Replace with the real manifest repository URL before applying.
     repoURL: 'https://github.com/myorg/gitops-manifests.git'
     targetRevision: HEAD
     path: .

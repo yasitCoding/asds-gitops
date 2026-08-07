@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from sqlmodel import SQLModel, create_engine, Session, select
 from app.models import PolicyRule
 
@@ -82,13 +83,35 @@ default allow = false
 
 allow {
     some i
-    container := input.manifest.spec.containers[i]
+    container := input.manifest.spec.template.spec.containers[i]
     startswith(container.image, "docker.io/")
+}
+
+allow {
+    some i
+    container := input.manifest.spec.template.spec.containers[i]
+    startswith(container.image, "ghcr.io/")
 }""",
         "description": "อิมเมจต้องดึงมาจาก Container Registry ที่อนุญาตเท่านั้น",
         "enabled": True
     }
 ]
+
+
+def load_policy_code(policy_filename: str) -> str:
+    """Load the database policy source from the OPA source-of-truth files."""
+    policy_path = Path(__file__).resolve().parents[2] / "policies" / policy_filename
+    return policy_path.read_text(encoding="utf-8")
+
+
+POLICY_FILES = {
+    "Unit Test Policy": "unit_test.rego",
+    "CVE Threshold Policy": "cve_threshold.rego",
+    "RunAsNonRoot Policy": "run_as_non_root.rego",
+    "Resource Limits Policy": "resource_limits.rego",
+    "Trusted Registry Policy": "trusted_registry.rego",
+}
+
 
 def init_db_and_seed():
     print("Creating tables on PostgreSQL (Supabase)...")
@@ -97,6 +120,9 @@ def init_db_and_seed():
     print("Seeding initial policy_rules...")
     with Session(engine) as session:
         for seed_data in SEED_POLICIES:
+            seed_data["rego_code"] = load_policy_code(
+                POLICY_FILES[seed_data["rule_name"]]
+            )
             statement = select(PolicyRule).where(PolicyRule.rule_name == seed_data["rule_name"])
             existing_rule = session.exec(statement).first()
             if not existing_rule:
@@ -104,6 +130,10 @@ def init_db_and_seed():
                 session.add(rule)
                 print(f"  + Added seed policy: {seed_data['rule_name']}")
             else:
+                if existing_rule.rego_code != seed_data["rego_code"]:
+                    existing_rule.rego_code = seed_data["rego_code"]
+                    session.add(existing_rule)
+                    print(f"  ~ Synced policy source: {seed_data['rule_name']}")
                 print(f"  - Policy already exists: {seed_data['rule_name']}")
         session.commit()
     print("Database initialization and seeding completed successfully!")

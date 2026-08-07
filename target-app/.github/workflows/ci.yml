@@ -47,26 +47,32 @@ jobs:
           echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
 
       - name: Run Trivy Vulnerability Scanner
-        uses: aquasecurity/trivy-action@master
+        id: trivy
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@0.28.0
         with:
           image-ref: 'docker.io/myorg/sample-app:${{ github.sha }}'
           format: 'json'
           output: 'trivy-report.json'
-        continue-on-error: true
+          exit-code: '1'
+          ignore-unfixed: true
 
       - name: Prepare & Post Webhook Payload to Control Plane
+        if: always()
         env:
-          CONTROL_PLANE_URL: ${{ secrets.CONTROL_PLANE_URL || 'http://localhost:8000' }}
-          WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET || 'your-webhook-secret-key' }}
-          REPO_URL: ${{ github.repositoryUrl || 'https://github.com/myorg/sample-app.git' }}
+          CONTROL_PLANE_URL: ${{ secrets.CONTROL_PLANE_URL }}
+          WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
+          REPO_URL: ${{ github.repositoryUrl }}
           COMMIT_HASH: ${{ github.sha }}
         run: |
           # Format JSON payload using python script or jq
           python3 -c "
           import json, os, hmac, hashlib, urllib.request
 
-          control_plane_url = os.environ.get('CONTROL_PLANE_URL', 'http://localhost:8000').rstrip('/')
-          webhook_secret = os.environ.get('WEBHOOK_SECRET', 'your-webhook-secret-key')
+          control_plane_url = os.environ.get('CONTROL_PLANE_URL', '').rstrip('/')
+          webhook_secret = os.environ.get('WEBHOOK_SECRET', '')
+          if not control_plane_url or not webhook_secret or webhook_secret in {'your-webhook-secret-key', 'default-secret'}:
+              raise SystemExit('CONTROL_PLANE_URL and a non-placeholder WEBHOOK_SECRET are required')
 
           test_status = os.environ.get('TEST_STATUS', 'passed')
           test_output = ''
@@ -88,9 +94,9 @@ jobs:
                   manifest_yaml = f.read()
 
           payload = {
-              'repository_url': os.environ.get('REPO_URL', 'https://github.com/myorg/sample-app.git'),
-              'commit_hash': os.environ.get('COMMIT_HASH', '0000000000000000000000000000000000000000'),
-              'image_tag': os.environ.get('IMAGE_TAG', 'docker.io/myorg/sample-app:latest'),
+              'repository_url': os.environ['REPO_URL'],
+              'commit_hash': os.environ['COMMIT_HASH'],
+              'image_tag': os.environ['IMAGE_TAG'],
               'test_status': test_status,
               'test_output': test_output,
               'trivy_report': trivy_report,
@@ -114,5 +120,11 @@ jobs:
               with urllib.request.urlopen(req) as resp:
                   print(f'Webhook HTTP {resp.status}: {resp.read().decode(\"utf-8\")}')
           except Exception as e:
-              print(f'Failed to post webhook: {e}')
+              raise SystemExit(f'Failed to post webhook: {e}') from e
           "
+
+      - name: Enforce Trivy Gate
+        if: always() && steps.trivy.outcome == 'failure'
+        run: |
+          echo "Trivy reported Critical/High vulnerabilities; Control Plane received the report."
+          exit 1
