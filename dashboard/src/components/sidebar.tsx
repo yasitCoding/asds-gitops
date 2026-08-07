@@ -1,16 +1,16 @@
 "use client";
 
+import { cn } from "@/lib/utils";
+import {
+  GitBranch,
+  LayoutDashboard,
+  ShieldAlert,
+  ShieldCheck,
+  Terminal,
+  Workflow,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  LayoutDashboard,
-  GitBranch,
-  Workflow,
-  ShieldCheck,
-  ShieldAlert,
-  Terminal,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
 
 const navigationItems = [
   {

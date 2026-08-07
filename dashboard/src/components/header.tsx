@@ -1,8 +1,8 @@
 "use client";
 
-import { usePathname } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Bell, RefreshCw } from "lucide-react";
+import { usePathname } from "next/navigation";
 
 const pageTitles: Record<string, string> = {
   "/dashboard": "System Overview & Analytics",
@@ -33,7 +33,7 @@ export function Header() {
     refetchInterval: 10000,
   });
 
-  const cpStatus = healthData || "online";
+  const cpStatus = healthData || "checking";
 
   return (
     <header className="h-16 border-b border-gray-200/80 bg-white/80 backdrop-blur-md sticky top-0 z-30 flex items-center justify-between px-8 ml-64">
@@ -53,7 +53,9 @@ export function Header() {
               ? "bg-emerald-50 border-emerald-200/80 text-emerald-700"
               : cpStatus === "degraded"
                 ? "bg-amber-50 border-amber-200/80 text-amber-700"
-                : "bg-rose-50 border-rose-200/80 text-rose-700"
+                : cpStatus === "checking"
+                  ? "bg-slate-50 border-slate-200/80 text-slate-600"
+                  : "bg-rose-50 border-rose-200/80 text-rose-700"
           }`}
         >
           <span className="relative flex h-2 w-2">
@@ -63,18 +65,22 @@ export function Header() {
                   ? "bg-emerald-500"
                   : cpStatus === "degraded"
                     ? "bg-amber-500"
-                    : "bg-rose-500"
+                    : cpStatus === "checking"
+                      ? "bg-slate-400"
+                      : "bg-rose-500"
               }`}
-            ></span>
+            />
             <span
               className={`relative inline-flex rounded-full h-2 w-2 ${
                 cpStatus === "online"
                   ? "bg-emerald-600"
                   : cpStatus === "degraded"
                     ? "bg-amber-600"
-                    : "bg-rose-600"
+                    : cpStatus === "checking"
+                      ? "bg-slate-500"
+                      : "bg-rose-600"
               }`}
-            ></span>
+            />
           </span>
           <span className="text-[#86868b] font-medium">Control Plane:</span>
           <span className="font-semibold capitalize">{cpStatus}</span>
@@ -93,7 +99,7 @@ export function Header() {
         {/* Notifications Icon */}
         <div className="p-2 rounded-xl bg-white border border-gray-200 text-[#86868b] relative shadow-sm">
           <Bell className="h-4 w-4" />
-          <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-[#0071e3]"></span>
+          <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-[#0071e3]" />
         </div>
       </div>
     </header>

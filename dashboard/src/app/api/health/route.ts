@@ -2,8 +2,11 @@ import { NextResponse } from "next/server";
 
 export async function GET() {
   try {
-    const controlPlaneUrl =
-      process.env.CONTROL_PLANE_URL || "http://localhost:8000";
+    const controlPlaneUrl = process.env.CONTROL_PLANE_URL;
+    if (!controlPlaneUrl) {
+      console.error("CONTROL_PLANE_URL is not configured");
+      return NextResponse.json({ status: "offline" }, { status: 200 });
+    }
     const res = await fetch(`${controlPlaneUrl}/health`, {
       cache: "no-store",
     });
@@ -17,10 +20,8 @@ export async function GET() {
       status: data.status === "healthy" ? "online" : "degraded",
       details: data,
     });
-  } catch (error: any) {
-    return NextResponse.json(
-      { status: "offline", error: error.message },
-      { status: 200 },
-    );
+  } catch (error: unknown) {
+    console.error("Control plane health check failed:", error);
+    return NextResponse.json({ status: "offline" }, { status: 200 });
   }
 }

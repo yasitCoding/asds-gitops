@@ -1,20 +1,19 @@
 "use client";
 
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/app-layout";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  GitBranch,
-  Plus,
-  Copy,
-  Check,
-  Globe,
   Box,
-  Layers,
-  Key,
   ExternalLink,
+  GitBranch,
+  Globe,
+  Key,
+  Layers,
+  Pencil,
+  Plus,
   Trash2,
 } from "lucide-react";
+import { useState } from "react";
 
 interface Repository {
   id: number;
@@ -25,13 +24,13 @@ interface Repository {
   branch: string;
   testCommand: string | null;
   registeredAt: string;
-  webhookSecret: string;
 }
 
 export default function RepositoriesPage() {
   const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [copiedId, setCopiedId] = useState<number | null>(null);
+  const [editingRepo, setEditingRepo] = useState<Repository | null>(null);
+  const [oneTimeSecret, setOneTimeSecret] = useState<string | null>(null);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -78,9 +77,10 @@ export default function RepositoriesPage() {
       if (!res.ok) throw new Error("Failed to create");
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (createdRepo: { webhookSecret?: string }) => {
       queryClient.invalidateQueries({ queryKey: ["repositories"] });
       setIsModalOpen(false);
+      setOneTimeSecret(createdRepo.webhookSecret ?? null);
       setFormData({
         repoUrl: "",
         repoName: "",
@@ -92,15 +92,71 @@ export default function RepositoriesPage() {
     },
   });
 
-  const handleCopySecret = (id: number, secret: string) => {
-    navigator.clipboard.writeText(secret);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
+  const updateMutation = useMutation({
+    mutationFn: async (repo: typeof formData & { id: number }) => {
+      const res = await fetch(`/api/repositories?id=${repo.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(repo),
+      });
+      if (!res.ok) throw new Error("Failed to update");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["repositories"] });
+      setIsModalOpen(false);
+      setEditingRepo(null);
+    },
+  });
+
+  const openCreateModal = () => {
+    setEditingRepo(null);
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (repo: Repository) => {
+    setEditingRepo(repo);
+    setFormData({
+      repoUrl: repo.repoUrl,
+      repoName: repo.repoName,
+      imageName: repo.imageName,
+      namespace: repo.namespace,
+      branch: repo.branch,
+      testCommand: repo.testCommand ?? "",
+    });
+    setIsModalOpen(true);
   };
 
   return (
     <AppLayout>
       <div className="space-y-6">
+        {oneTimeSecret && (
+          <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900">
+            <p className="font-bold">Save this webhook secret now</p>
+            <p className="mt-1">
+              It will not be shown again. Configure it in GitHub Actions:
+            </p>
+            <code className="block mt-2 p-2 rounded-lg bg-white border border-amber-200 font-mono break-all">
+              {oneTimeSecret}
+            </code>
+            <button
+              type="button"
+              className="mt-2 underline font-semibold"
+              onClick={() => {
+                navigator.clipboard.writeText(oneTimeSecret);
+              }}
+            >
+              Copy secret
+            </button>
+            <button
+              type="button"
+              className="ml-4 underline"
+              onClick={() => setOneTimeSecret(null)}
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
         {/* Header Action Banner */}
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-6 rounded-2xl apple-card">
           <div className="space-y-1">
@@ -115,7 +171,7 @@ export default function RepositoriesPage() {
           </div>
           <button
             type="button"
-            onClick={() => setIsModalOpen(true)}
+            onClick={openCreateModal}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#1d1d1f] hover:bg-black text-white font-medium text-xs shadow-sm transition-all duration-200"
           >
             <Plus className="h-4 w-4" />
@@ -190,6 +246,14 @@ export default function RepositoriesPage() {
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => openEditModal(repo)}
+                    className="p-2 rounded-xl text-[#86868b] hover:text-[#0071e3] hover:bg-blue-50 transition-colors"
+                    title="Edit Repository"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </button>
                 </div>
 
                 {/* Details Grid */}
@@ -221,23 +285,9 @@ export default function RepositoriesPage() {
                       Webhook Secret:
                     </span>
                     <span className="font-mono text-[#1d1d1f] truncate font-medium">
-                      {repo.webhookSecret}
+                      whsec_••••••••
                     </span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      handleCopySecret(repo.id, repo.webhookSecret)
-                    }
-                    className="p-1.5 rounded-lg bg-white border border-gray-200 text-[#86868b] hover:text-[#1d1d1f] transition-colors shrink-0 shadow-sm"
-                    title="Copy Secret"
-                  >
-                    {copiedId === repo.id ? (
-                      <Check className="h-3.5 w-3.5 text-emerald-600" />
-                    ) : (
-                      <Copy className="h-3.5 w-3.5" />
-                    )}
-                  </button>
                 </div>
               </div>
             ))}
@@ -251,7 +301,9 @@ export default function RepositoriesPage() {
               <div className="flex items-center justify-between border-b border-gray-100 pb-4">
                 <h3 className="text-lg font-bold text-[#1d1d1f] flex items-center gap-2 tracking-tight">
                   <GitBranch className="h-5 w-5 text-[#0071e3]" />
-                  Register Git Repository
+                  {editingRepo
+                    ? "Edit Git Repository"
+                    : "Register Git Repository"}
                 </h3>
                 <button
                   type="button"
@@ -265,7 +317,11 @@ export default function RepositoriesPage() {
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
-                  createMutation.mutate(formData);
+                  if (editingRepo) {
+                    updateMutation.mutate({ ...formData, id: editingRepo.id });
+                  } else {
+                    createMutation.mutate(formData);
+                  }
                 }}
                 className="space-y-4 text-xs"
               >
@@ -376,12 +432,16 @@ export default function RepositoriesPage() {
                   </button>
                   <button
                     type="submit"
-                    disabled={createMutation.isPending}
+                    disabled={
+                      createMutation.isPending || updateMutation.isPending
+                    }
                     className="px-4 py-2 rounded-xl bg-[#1d1d1f] hover:bg-black text-white font-semibold shadow-sm disabled:opacity-50"
                   >
-                    {createMutation.isPending
-                      ? "Registering..."
-                      : "Register Repository"}
+                    {createMutation.isPending || updateMutation.isPending
+                      ? "Saving..."
+                      : editingRepo
+                        ? "Save Changes"
+                        : "Register Repository"}
                   </button>
                 </div>
               </form>

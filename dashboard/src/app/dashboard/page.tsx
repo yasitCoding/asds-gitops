@@ -1,18 +1,18 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import Link from "next/link";
 import { AppLayout } from "@/components/app-layout";
+import { useQuery } from "@tanstack/react-query";
 import {
-  Workflow,
-  ShieldCheck,
-  Layers,
-  Bug,
-  ArrowUpRight,
-  TrendingUp,
   Activity,
+  ArrowUpRight,
+  Bug,
+  Layers,
   ShieldAlert,
+  ShieldCheck,
+  TrendingUp,
+  Workflow,
 } from "lucide-react";
+import Link from "next/link";
 
 interface AnalyticsData {
   totalPipelines: number;
@@ -31,6 +31,11 @@ interface AnalyticsData {
     packageName: string;
     severity: string;
     count: number;
+  }>;
+  pipelineTrend: Array<{
+    date: string;
+    passed: number;
+    failed: number;
   }>;
   recentPipelines: Array<{
     id: number;
@@ -180,8 +185,8 @@ export default function DashboardOverviewPage() {
                   {analytics.activeDeployments}
                 </span>
                 <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-600"></span>
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-600" />
                 </span>
               </div>
               <p className="text-[11px] text-[#86868b] pt-1">
@@ -358,9 +363,9 @@ export default function DashboardOverviewPage() {
                 </p>
               ) : (
                 <div className="space-y-2">
-                  {analytics.topCVEs.map((item, idx) => (
+                  {analytics.topCVEs.map((item) => (
                     <div
-                      key={idx}
+                      key={`${item.cveId}-${item.packageName}`}
                       className="p-2.5 rounded-xl bg-gray-50 border border-gray-200/80 flex items-center justify-between text-xs font-mono"
                     >
                       <div className="truncate">
@@ -380,6 +385,46 @@ export default function DashboardOverviewPage() {
               )}
             </div>
           </div>
+        </div>
+
+        <div className="p-6 rounded-2xl apple-card space-y-4">
+          <h3 className="text-sm font-bold text-[#1d1d1f] border-b border-gray-100 pb-3">
+            Pipeline Success / Failure Trend
+          </h3>
+          {analytics.pipelineTrend.length === 0 ? (
+            <p className="text-xs text-[#86868b]">No trend data available.</p>
+          ) : (
+            <div className="space-y-3">
+              {analytics.pipelineTrend.map((day) => {
+                const total = Number(day.passed) + Number(day.failed);
+                const passedWidth = total
+                  ? (Number(day.passed) / total) * 100
+                  : 0;
+                return (
+                  <div key={day.date} className="space-y-1 text-xs">
+                    <div className="flex justify-between font-mono text-[#86868b]">
+                      <span>{new Date(day.date).toLocaleDateString()}</span>
+                      <span>
+                        <span className="text-emerald-600">
+                          {day.passed} passed
+                        </span>
+                        {" · "}
+                        <span className="text-rose-600">
+                          {day.failed} failed
+                        </span>
+                      </span>
+                    </div>
+                    <div className="flex h-2 overflow-hidden rounded-full bg-rose-100">
+                      <div
+                        className="bg-emerald-500 transition-all"
+                        style={{ width: `${passedWidth}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
     </AppLayout>

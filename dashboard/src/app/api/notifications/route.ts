@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
 import { db, notificationsLog } from "@/db";
 import { desc } from "drizzle-orm";
+import { NextResponse } from "next/server";
 
 export async function GET() {
   try {
@@ -11,7 +11,7 @@ export async function GET() {
       .limit(50);
 
     return NextResponse.json(logs);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching notifications log:", error);
     return NextResponse.json(
       { error: "Failed to fetch notifications log" },

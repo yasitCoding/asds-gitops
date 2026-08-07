@@ -1,6 +1,6 @@
+import { db, deployments, pipelineRuns, repositories, scanResults } from "@/db";
+import { desc, eq, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { db, pipelineRuns, repositories, scanResults, deployments } from "@/db";
-import { eq, desc, sql } from "drizzle-orm";
 
 export async function GET() {
   try {
@@ -34,7 +34,8 @@ export async function GET() {
     // 4. Active Deployments count
     const deploymentsResult = await db
       .select({ count: sql<number>`count(*)` })
-      .from(deployments);
+      .from(deployments)
+      .where(eq(deployments.deploymentStatus, "synced"));
     const activeDeployments = Number(deploymentsResult[0]?.count || 0);
 
     // 5. CVE Severities breakdown
@@ -72,7 +73,18 @@ export async function GET() {
       .orderBy(desc(sql`count(*)`))
       .limit(5);
 
-    // 7. Top 5 Recent Pipeline Executions with Repo name
+    const pipelineTrend = await db
+      .select({
+        date: sql<string>`date_trunc('day', ${pipelineRuns.triggeredAt})`,
+        passed: sql<number>`sum(case when ${pipelineRuns.status} in ('passed', 'deployed') then 1 else 0 end)`,
+        failed: sql<number>`sum(case when ${pipelineRuns.status} in ('test_failed', 'scan_failed', 'policy_failed', 'failed') then 1 else 0 end)`,
+      })
+      .from(pipelineRuns)
+      .groupBy(sql`date_trunc('day', ${pipelineRuns.triggeredAt})`)
+      .orderBy(sql`date_trunc('day', ${pipelineRuns.triggeredAt})`)
+      .limit(14);
+
+    // 8. Top 5 Recent Pipeline Executions with Repo name
     const recentPipelines = await db
       .select({
         id: pipelineRuns.id,
@@ -95,9 +107,10 @@ export async function GET() {
       activeDeployments,
       cveDistribution,
       topCVEs,
+      pipelineTrend,
       recentPipelines,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching analytics data:", error);
     return NextResponse.json(
       { error: "Failed to fetch analytics data" },

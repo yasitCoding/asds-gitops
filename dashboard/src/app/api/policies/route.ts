@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
 import { db, policyRules } from "@/db";
-import { eq, asc } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
+import { NextResponse } from "next/server";
 
 export async function GET() {
   try {
@@ -10,7 +10,7 @@ export async function GET() {
       .orderBy(asc(policyRules.id));
 
     return NextResponse.json(rules);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching policy rules:", error);
     return NextResponse.json(
       { error: "Failed to fetch policy rules" },
@@ -38,7 +38,7 @@ export async function PATCH(request: Request) {
       .returning();
 
     return NextResponse.json(updated[0]);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error updating policy rule:", error);
     return NextResponse.json(
       { error: "Failed to update policy rule" },

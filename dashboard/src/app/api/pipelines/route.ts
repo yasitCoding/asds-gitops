@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
 import { db, pipelineRuns, repositories } from "@/db";
-import { eq, desc } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
+import { NextResponse } from "next/server";
 
 export async function GET() {
   try {
@@ -21,7 +21,7 @@ export async function GET() {
       .orderBy(desc(pipelineRuns.triggeredAt));
 
     return NextResponse.json(runs);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching pipeline runs:", error);
     return NextResponse.json(
       { error: "Failed to fetch pipeline runs" },

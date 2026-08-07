@@ -1,21 +1,21 @@
-import { NextResponse } from "next/server";
 import {
   db,
+  deployments,
   pipelineRuns,
+  policyViolations,
   repositories,
   scanResults,
-  policyViolations,
-  deployments,
 } from "@/db";
 import { eq } from "drizzle-orm";
+import { NextResponse } from "next/server";
 
 export async function GET(
   request: Request,
   { params }: { params: { id: string } },
 ) {
   try {
-    const runId = parseInt(params.id, 10);
-    if (isNaN(runId)) {
+    const runId = Number.parseInt(params.id, 10);
+    if (Number.isNaN(runId)) {
       return NextResponse.json(
         { error: "Invalid pipeline ID" },
         { status: 400 },
@@ -74,7 +74,7 @@ export async function GET(
       violations,
       deployment: deploymentList[0] || null,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching pipeline run details:", error);
     return NextResponse.json(
       { error: "Failed to fetch pipeline details" },

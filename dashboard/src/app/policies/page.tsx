@@ -1,18 +1,18 @@
 "use client";
 
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/app-layout";
+import { cn } from "@/lib/utils";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  ShieldCheck,
-  ShieldAlert,
-  Code2,
   ChevronDown,
   ChevronUp,
+  Code2,
+  ShieldAlert,
+  ShieldCheck,
   ToggleLeft,
   ToggleRight,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { useState } from "react";
 
 interface PolicyRule {
   id: number;
