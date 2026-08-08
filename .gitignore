@@ -18,7 +18,6 @@ venv/
 # IDE
 .vscode/
 .idea/
-.cursor/
 
 # OS
 .DS_Store
@@ -38,3 +37,6 @@ project-overview.html
 /AGENTS.md
 /context.md
 /task.md
+
+# Cursor local rules
+.cursor/
