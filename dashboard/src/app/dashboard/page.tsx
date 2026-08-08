@@ -118,9 +118,7 @@ export default function DashboardOverviewPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        {/* Metric Summary Cards Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          {/* Card 1: Total Pipelines */}
           <div className="p-5 rounded-2xl apple-card space-y-3 relative overflow-hidden">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-semibold text-[#86868b] uppercase tracking-wider">
@@ -140,7 +138,6 @@ export default function DashboardOverviewPage() {
             </div>
           </div>
 
-          {/* Card 2: Pass Rate */}
           <div className="p-5 rounded-2xl apple-card space-y-3 relative overflow-hidden">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-semibold text-[#86868b] uppercase tracking-wider">
@@ -159,7 +156,6 @@ export default function DashboardOverviewPage() {
                   <TrendingUp className="h-3 w-3 mr-0.5" /> High
                 </span>
               </div>
-              {/* Progress bar */}
               <div className="w-full h-1.5 rounded-full bg-gray-100 mt-2.5 overflow-hidden">
                 <div
                   className="h-full bg-[#0071e3] rounded-full transition-all duration-500"
@@ -169,7 +165,6 @@ export default function DashboardOverviewPage() {
             </div>
           </div>
 
-          {/* Card 3: Active Deployments */}
           <div className="p-5 rounded-2xl apple-card space-y-3 relative overflow-hidden">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-semibold text-[#86868b] uppercase tracking-wider">
@@ -195,7 +190,6 @@ export default function DashboardOverviewPage() {
             </div>
           </div>
 
-          {/* Card 4: Vulnerabilities Blocked */}
           <div className="p-5 rounded-2xl apple-card space-y-3 relative overflow-hidden">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-semibold text-[#86868b] uppercase tracking-wider">
@@ -222,9 +216,7 @@ export default function DashboardOverviewPage() {
           </div>
         </div>
 
-        {/* Two-Column Analytics Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column (2 cols): Recent Executions Timeline & Status */}
           <div className="lg:col-span-2 p-6 rounded-2xl apple-card space-y-4">
             <div className="flex items-center justify-between border-b border-gray-100 pb-3">
               <h3 className="text-sm font-bold text-[#1d1d1f] flex items-center gap-2 tracking-tight">
@@ -278,14 +270,12 @@ export default function DashboardOverviewPage() {
             )}
           </div>
 
-          {/* Right Column (1 col): CVE Severity Distribution & Top CVEs */}
           <div className="p-6 rounded-2xl apple-card space-y-5">
             <h3 className="text-sm font-bold text-[#1d1d1f] flex items-center gap-2 border-b border-gray-100 pb-3 tracking-tight">
               <ShieldAlert className="h-4 w-4 text-amber-500" />
               CVE Severity Analytics Breakdown
             </h3>
 
-            {/* Severity Bars */}
             <div className="space-y-3 text-xs">
               <div className="space-y-1">
                 <div className="flex justify-between font-mono">
@@ -352,7 +342,6 @@ export default function DashboardOverviewPage() {
               </div>
             </div>
 
-            {/* Top 5 Common CVEs */}
             <div className="pt-2 space-y-2">
               <span className="text-[11px] font-semibold text-[#86868b] uppercase tracking-wider">
                 Top Frequent CVEs

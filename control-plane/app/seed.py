@@ -3,7 +3,6 @@ from pathlib import Path
 from sqlmodel import SQLModel, create_engine, Session, select
 from app.models import PolicyRule
 
-# Read connection string from environment
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
     raise ValueError("DATABASE_URL environment variable is not set. Check your .env file.")

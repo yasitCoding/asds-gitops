@@ -56,7 +56,7 @@ async def receive_pipeline_webhook(
             detail="Repository is not registered in the control plane.",
         )
 
-    # 1. Verify HMAC Signature (Security Gate)
+    # Reject untrusted webhook data before processing it.
     raw_body = await request.body()
     if not x_hub_signature_256 or not verify_github_hmac_signature(
         raw_body=raw_body,
@@ -75,13 +75,11 @@ async def receive_pipeline_webhook(
         payload.image_tag,
     )
 
-    # 2. Parse Trivy Scan Report
     summary, vulnerabilities = TrivyParserService.parse_scan_report(
         pipeline_run_id=0,
         raw_report=payload.trivy_report or {}
     )
 
-    # 3. Parse Manifest YAML
     manifest_dict: Optional[Dict[str, Any]] = None
     if payload.manifest_yaml:
         try:
@@ -89,7 +87,6 @@ async def receive_pipeline_webhook(
         except Exception as e:
             logger.warning(f"Failed to parse manifest_yaml: {e}")
 
-    # 4. Create Pipeline Run DB Record (Running)
     pipeline_run = recorder.create_pipeline_run(
         repository_id=repo.id,
         commit_hash=payload.commit_hash,
@@ -100,16 +97,13 @@ async def receive_pipeline_webhook(
         scan_summary=summary,
     )
 
-    # Log Notification: Pipeline Started
     recorder.record_notification_log(
         pipeline_run_id=pipeline_run.id,
         message_content=f"Pipeline run #{pipeline_run.id} started for commit {payload.commit_hash[:7]}"
     )
 
-    # Record scan results in DB
     recorder.record_scan_results(pipeline_run.id, vulnerabilities)
 
-    # 5. Evaluate via OPA Client
     opa_service = OPAClientService()
     scan_results_dict = [v.model_dump() for v in vulnerabilities]
     enabled_rule_names = {
@@ -137,15 +131,12 @@ async def receive_pipeline_webhook(
         enabled_policies=enabled_policies,
     )
 
-    # 6. Handle Execution Decision (Passed vs Failed)
     if not eval_result.is_allowed:
-        # Record Violations & Update Pipeline Status
         recorder.record_policy_violations(pipeline_run.id, eval_result.violation_details)
         pipeline_run.status = eval_result.status_code
         db_session.add(pipeline_run)
         db_session.commit()
 
-        # Log Notification: Pipeline Failed
         violation_summary = "; ".join(eval_result.violations) if eval_result.violations else "Policy check failed"
         recorder.record_notification_log(
             pipeline_run_id=pipeline_run.id,
@@ -159,7 +150,6 @@ async def receive_pipeline_webhook(
             violations=eval_result.violations,
         )
 
-    # Passed! Execute GitOps Auto-commit & Push
     git_service = GitManifestService()
     git_success = await git_service.update_manifest_image_tag(
         image_name=repo.image_name,
@@ -191,7 +181,6 @@ async def receive_pipeline_webhook(
     db_session.add(pipeline_run)
     db_session.commit()
 
-    # TODO: Add an ArgoCD callback before recording a deployed status.
     recorder.record_notification_log(
         pipeline_run_id=pipeline_run.id,
         message_content=(

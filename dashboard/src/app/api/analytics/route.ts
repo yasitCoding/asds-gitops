@@ -4,20 +4,17 @@ import { NextResponse } from "next/server";
 
 export async function GET() {
   try {
-    // 1. Total Pipeline Runs count
     const totalResult = await db
       .select({ count: sql<number>`count(*)` })
       .from(pipelineRuns);
     const totalPipelines = Number(totalResult[0]?.count || 0);
 
-    // 2. Passed & Deployed count
     const passedResult = await db
       .select({ count: sql<number>`count(*)` })
       .from(pipelineRuns)
       .where(sql`${pipelineRuns.status} IN ('passed', 'deployed')`);
     const passedCount = Number(passedResult[0]?.count || 0);
 
-    // 3. Failed count
     const failedResult = await db
       .select({ count: sql<number>`count(*)` })
       .from(pipelineRuns)
@@ -31,14 +28,12 @@ export async function GET() {
         ? Math.round((passedCount / totalPipelines) * 100)
         : 100;
 
-    // 4. Active Deployments count
     const deploymentsResult = await db
       .select({ count: sql<number>`count(*)` })
       .from(deployments)
       .where(eq(deployments.deploymentStatus, "synced"));
     const activeDeployments = Number(deploymentsResult[0]?.count || 0);
 
-    // 5. CVE Severities breakdown
     const cveSeverities = await db
       .select({
         severity: scanResults.severity,
@@ -60,7 +55,6 @@ export async function GET() {
       }
     }
 
-    // 6. Top 5 Most Common CVEs
     const topCVEs = await db
       .select({
         cveId: scanResults.cveId,
@@ -84,7 +78,6 @@ export async function GET() {
       .orderBy(sql`date_trunc('day', ${pipelineRuns.triggeredAt})`)
       .limit(14);
 
-    // 8. Top 5 Recent Pipeline Executions with Repo name
     const recentPipelines = await db
       .select({
         id: pipelineRuns.id,

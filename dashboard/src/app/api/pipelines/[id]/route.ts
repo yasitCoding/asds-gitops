@@ -50,19 +50,16 @@ export async function GET(
 
     const run = runDetails[0];
 
-    // Fetch related scan results
     const scans = await db
       .select()
       .from(scanResults)
       .where(eq(scanResults.pipelineRunId, runId));
 
-    // Fetch related policy violations
     const violations = await db
       .select()
       .from(policyViolations)
       .where(eq(policyViolations.pipelineRunId, runId));
 
-    // Fetch deployment details if exists
     const deploymentList = await db
       .select()
       .from(deployments)

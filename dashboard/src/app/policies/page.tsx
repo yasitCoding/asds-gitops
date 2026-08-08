@@ -26,7 +26,6 @@ export default function PoliciesPage() {
   const queryClient = useQueryClient();
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
-  // Fetch OPA Policy Rules
   const { data: rules = [], isLoading } = useQuery<PolicyRule[]>({
     queryKey: ["policy_rules"],
     queryFn: async () => {
@@ -36,7 +35,6 @@ export default function PoliciesPage() {
     },
   });
 
-  // Toggle Policy Rule Mutation
   const toggleMutation = useMutation({
     mutationFn: async ({ id, enabled }: { id: number; enabled: boolean }) => {
       const res = await fetch("/api/policies", {
@@ -59,7 +57,6 @@ export default function PoliciesPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        {/* Header Action Banner */}
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-6 rounded-2xl apple-card">
           <div className="space-y-1">
             <h2 className="text-xl font-bold text-[#1d1d1f] flex items-center gap-2 tracking-tight">
@@ -83,7 +80,6 @@ export default function PoliciesPage() {
           </div>
         </div>
 
-        {/* Rules Grid */}
         {isLoading ? (
           <div className="space-y-4">
             {[1, 2, 3].map((n) => (
@@ -108,7 +104,6 @@ export default function PoliciesPage() {
                   rule.enabled ? "opacity-100" : "opacity-60 bg-gray-50/50",
                 )}
               >
-                {/* Rule Header Row */}
                 <div className="p-5 flex items-center justify-between gap-4">
                   <div className="flex items-center gap-4 min-w-0">
                     <div
@@ -148,9 +143,7 @@ export default function PoliciesPage() {
                     </div>
                   </div>
 
-                  {/* Actions: Toggle & Expand Rego Code */}
                   <div className="flex items-center gap-3 shrink-0">
-                    {/* Rego Code Drawer Toggle */}
                     <button
                       type="button"
                       onClick={() => toggleExpand(rule.id)}
@@ -165,7 +158,6 @@ export default function PoliciesPage() {
                       )}
                     </button>
 
-                    {/* Interactive Enable/Disable Toggle Button */}
                     <button
                       type="button"
                       disabled={toggleMutation.isPending}
@@ -197,7 +189,6 @@ export default function PoliciesPage() {
                   </div>
                 </div>
 
-                {/* Collapsible Rego Code Block */}
                 {expandedId === rule.id && (
                   <div className="border-t border-gray-200 bg-[#161618] p-5 space-y-2">
                     <div className="flex items-center justify-between text-xs text-gray-400">

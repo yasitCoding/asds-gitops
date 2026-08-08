@@ -66,15 +66,12 @@ class GitManifestService:
             logger.info(f"Cloning GitOps manifest repo into {temp_dir}...")
             repo = Repo.clone_from(auth_url, temp_dir)
 
-            # Configure git author
             with repo.config_writer() as git_config:
                 git_config.set_value("user", "name", self.author_name)
                 git_config.set_value("user", "email", self.author_email)
 
-            # Search for deployment YAML file in cloned repo
             file_path = os.path.join(temp_dir, target_manifest_path)
             if not os.path.exists(file_path):
-                # Search for any yaml file if specific target_manifest_path not found
                 found_files = [
                     os.path.join(dp, f)
                     for dp, dn, filenames in os.walk(temp_dir)
@@ -86,7 +83,6 @@ class GitManifestService:
                     logger.error(f"No YAML manifest file found in repository {temp_dir}")
                     return False
 
-            # Read existing YAML file
             with open(file_path, "r", encoding="utf-8") as f:
                 content = f.read()
 
@@ -105,11 +101,9 @@ class GitManifestService:
                 logger.info("Image tag in manifest is already up to date. No changes made.")
                 return True
 
-            # Write updated manifest back
             with open(file_path, "w", encoding="utf-8") as f:
                 f.write(updated_content)
 
-            # Git commit and push
             repo.git.add(A=True)
             commit_message = f"[GitOps Auto-Deploy] Update image tag to {tag} (commit: {commit_hash[:7]})"
             repo.index.commit(commit_message)
@@ -124,5 +118,4 @@ class GitManifestService:
             logger.error(f"Failed to update and push GitOps manifest: {e}")
             return False
         finally:
-            # Clean up temp directory
             shutil.rmtree(temp_dir, ignore_errors=True)

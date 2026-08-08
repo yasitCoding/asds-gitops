@@ -12,7 +12,6 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# CORS Middleware
 allowed_origins_raw = os.getenv("CORS_ALLOWED_ORIGINS", "")
 allowed_origins = [origin.strip() for origin in allowed_origins_raw.split(",") if origin.strip()]
 
@@ -24,7 +23,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount API Routers
 app.include_router(health_router)
 app.include_router(webhook_router)
 app.include_router(deployed_router)

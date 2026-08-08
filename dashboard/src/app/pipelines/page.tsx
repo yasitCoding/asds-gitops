@@ -50,7 +50,6 @@ export default function PipelinesPage() {
   );
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
 
-  // Fetch Pipeline Runs
   const { data: runs = [], isLoading: isLoadingRuns } = useQuery<PipelineRun[]>(
     {
       queryKey: ["pipeline_runs"],
@@ -62,7 +61,6 @@ export default function PipelinesPage() {
     },
   );
 
-  // Fetch Notification Audit Logs
   const { data: auditLogs = [], isLoading: isLoadingAudit } = useQuery<
     NotificationLogItem[]
   >({
@@ -123,7 +121,6 @@ export default function PipelinesPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        {/* Navigation Tabs & Filter Bar */}
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-4 rounded-2xl apple-card">
           <div className="flex items-center gap-2 p-1 rounded-xl bg-gray-100 border border-gray-200/60">
             <button
@@ -175,7 +172,6 @@ export default function PipelinesPage() {
           )}
         </div>
 
-        {/* Tab 1: Pipelines List */}
         {activeTab === "pipelines" && (
           <div className="rounded-2xl apple-card overflow-hidden">
             {isLoadingRuns ? (
@@ -268,7 +264,6 @@ export default function PipelinesPage() {
           </div>
         )}
 
-        {/* Tab 2: Audit Event Logs */}
         {activeTab === "audit" && (
           <div className="rounded-2xl apple-card p-6 space-y-4">
             <h3 className="text-sm font-bold text-[#1d1d1f] flex items-center gap-2 tracking-tight">

@@ -32,7 +32,6 @@ export default function RepositoriesPage() {
   const [editingRepo, setEditingRepo] = useState<Repository | null>(null);
   const [oneTimeSecret, setOneTimeSecret] = useState<string | null>(null);
 
-  // Form State
   const [formData, setFormData] = useState({
     repoUrl: "",
     repoName: "",
@@ -42,7 +41,6 @@ export default function RepositoriesPage() {
     testCommand: "npm test",
   });
 
-  // Fetch Repositories
   const { data: repos = [], isLoading } = useQuery<Repository[]>({
     queryKey: ["repositories"],
     queryFn: async () => {
@@ -52,7 +50,6 @@ export default function RepositoriesPage() {
     },
   });
 
-  // Delete Repository Mutation
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
       const res = await fetch(`/api/repositories?id=${id}`, {
@@ -66,7 +63,6 @@ export default function RepositoriesPage() {
     },
   });
 
-  // Add Repository Mutation
   const createMutation = useMutation({
     mutationFn: async (newRepo: typeof formData) => {
       const res = await fetch("/api/repositories", {
@@ -157,7 +153,6 @@ export default function RepositoriesPage() {
             </button>
           </div>
         )}
-        {/* Header Action Banner */}
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-6 rounded-2xl apple-card">
           <div className="space-y-1">
             <h2 className="text-xl font-bold text-[#1d1d1f] flex items-center gap-2 tracking-tight">
@@ -179,7 +174,6 @@ export default function RepositoriesPage() {
           </button>
         </div>
 
-        {/* Repositories Grid */}
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {[1, 2].map((n) => (
@@ -207,7 +201,6 @@ export default function RepositoriesPage() {
                 key={repo.id}
                 className="p-6 rounded-2xl apple-card space-y-4"
               >
-                {/* Title & Branch & Delete */}
                 <div className="flex items-start justify-between gap-2">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
@@ -256,7 +249,6 @@ export default function RepositoriesPage() {
                   </button>
                 </div>
 
-                {/* Details Grid */}
                 <div className="grid grid-cols-2 gap-3 pt-2 text-xs">
                   <div className="p-3 rounded-xl bg-gray-50 border border-gray-200/60 space-y-1">
                     <span className="text-[10px] text-[#86868b] uppercase tracking-wider font-semibold flex items-center gap-1">
@@ -277,7 +269,6 @@ export default function RepositoriesPage() {
                   </div>
                 </div>
 
-                {/* Webhook Secret Bar */}
                 <div className="p-3 rounded-xl bg-gray-100/80 border border-gray-200/80 flex items-center justify-between gap-3 text-xs">
                   <div className="flex items-center gap-2 min-w-0">
                     <Key className="h-3.5 w-3.5 text-amber-600 shrink-0" />
@@ -294,7 +285,6 @@ export default function RepositoriesPage() {
           </div>
         )}
 
-        {/* Modal: Register New Repository */}
         {isModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
             <div className="w-full max-w-lg rounded-2xl bg-white p-6 space-y-6 shadow-2xl border border-gray-200">

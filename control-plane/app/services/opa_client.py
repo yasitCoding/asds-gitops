@@ -157,7 +157,6 @@ class OPAClientService:
         all_violations: List[str] = []
         violation_details: List[Dict[str, Any]] = []
 
-        # 1. Unit Test Policy
         unit_res = (
             await self.evaluate_policy("unit_test", input_payload)
             if "unit_test" in enabled
@@ -175,7 +174,6 @@ class OPAClientService:
                 violation_details=[{"policy": "unit_test", "detail": v} for v in violations]
             )
 
-        # 2. CVE Threshold Policy
         cve_res = (
             await self.evaluate_policy("cve_threshold", input_payload)
             if "cve_threshold" in enabled
@@ -193,7 +191,6 @@ class OPAClientService:
                 violation_details=[{"policy": "cve_threshold", "detail": v} for v in violations]
             )
 
-        # 3. K8s Manifest Policies (run_as_non_root, resource_limits, trusted_registry)
         manifest_policies = ["run_as_non_root", "resource_limits", "trusted_registry"]
         has_policy_failure = False
 
@@ -218,7 +215,6 @@ class OPAClientService:
                 violation_details=violation_details
             )
 
-        # All passed!
         return OPAEvaluationResult(
             is_allowed=True,
             status_code="passed",

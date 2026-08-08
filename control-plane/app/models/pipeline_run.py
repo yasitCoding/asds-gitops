@@ -17,7 +17,6 @@ class PipelineRun(PipelineRunBase, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     triggered_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
-    # Relationships
     repository: Optional["Repository"] = Relationship(back_populates="pipeline_runs")
     scan_results: List["ScanResult"] = Relationship(back_populates="pipeline_run")
     policy_violations: List["PolicyViolation"] = Relationship(back_populates="pipeline_run")

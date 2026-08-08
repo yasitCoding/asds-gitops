@@ -40,7 +40,6 @@ export function Sidebar() {
 
   return (
     <aside className="w-64 border-r border-gray-200/80 bg-white flex flex-col h-screen fixed left-0 top-0 z-40">
-      {/* Brand Logo Header */}
       <div className="h-16 flex items-center gap-3 px-6 border-b border-gray-100">
         <div className="h-9 w-9 rounded-xl bg-[#1d1d1f] flex items-center justify-center shadow-sm">
           <ShieldAlert className="h-5 w-5 text-white" />
@@ -55,7 +54,6 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* Navigation Links */}
       <nav className="flex-1 px-3 py-6 space-y-1 overflow-y-auto">
         <div className="px-3 pb-2 text-[11px] font-semibold text-[#86868b] tracking-wider uppercase">
           Navigation
@@ -91,7 +89,6 @@ export function Sidebar() {
         })}
       </nav>
 
-      {/* Footer Info */}
       <div className="p-3.5 m-3 rounded-xl bg-gray-50 border border-gray-200/60 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Terminal className="h-4 w-4 text-emerald-600" />

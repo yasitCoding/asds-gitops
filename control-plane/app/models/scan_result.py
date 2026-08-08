@@ -16,7 +16,6 @@ class ScanResult(ScanResultBase, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
 
-    # Relationship
     pipeline_run: Optional["PipelineRun"] = Relationship(back_populates="scan_results")
 
 class ScanResultCreate(ScanResultBase):

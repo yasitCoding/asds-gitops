@@ -12,7 +12,6 @@ class PolicyRule(PolicyRuleBase, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
 
-    # Relationship
     violations: List["PolicyViolation"] = Relationship(back_populates="policy_rule")
 
 class PolicyRuleCreate(PolicyRuleBase):

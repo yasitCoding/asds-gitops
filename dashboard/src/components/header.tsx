@@ -17,7 +17,6 @@ export function Header() {
     pageTitles[pathname || "/dashboard"] ||
     (pathname?.startsWith("/pipelines/") ? "Pipeline Details" : "Dashboard");
 
-  // Dynamic Control Plane Health Check Query
   const { data: healthData } = useQuery({
     queryKey: ["control_plane_health"],
     queryFn: async () => {
@@ -37,16 +36,13 @@ export function Header() {
 
   return (
     <header className="h-16 border-b border-gray-200/80 bg-white/80 backdrop-blur-md sticky top-0 z-30 flex items-center justify-between px-8 ml-64">
-      {/* Title */}
       <div className="flex items-center gap-4">
         <h1 className="text-lg font-bold text-[#1d1d1f] tracking-tight">
           {title}
         </h1>
       </div>
 
-      {/* System Status & Quick Indicators */}
       <div className="flex items-center gap-3">
-        {/* Dynamic Status Badge */}
         <div
           className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs transition-colors ${
             cpStatus === "online"
@@ -86,7 +82,6 @@ export function Header() {
           <span className="font-semibold capitalize">{cpStatus}</span>
         </div>
 
-        {/* Sync Button */}
         <button
           type="button"
           onClick={() => window.location.reload()}
@@ -96,7 +91,6 @@ export function Header() {
           <RefreshCw className="h-4 w-4" />
         </button>
 
-        {/* Notifications Icon */}
         <div className="p-2 rounded-xl bg-white border border-gray-200 text-[#86868b] relative shadow-sm">
           <Bell className="h-4 w-4" />
           <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-[#0071e3]" />

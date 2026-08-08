@@ -17,7 +17,6 @@ class Repository(RepositoryBase, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     registered_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
-    # Relationships
     pipeline_runs: List["PipelineRun"] = Relationship(back_populates="repository")
 
 class RepositoryCreate(RepositoryBase):

@@ -14,7 +14,6 @@ class Deployment(DeploymentBase, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     deployed_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
-    # Relationship
     pipeline_run: Optional["PipelineRun"] = Relationship(back_populates="deployment")
 
 class DeploymentCreate(DeploymentBase):

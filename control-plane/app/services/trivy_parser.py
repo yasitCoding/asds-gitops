@@ -45,7 +45,6 @@ class TrivyParserService:
                 fixed_ver = vuln.get("FixedVersion")
                 desc = vuln.get("Description")
 
-                # Count severities
                 if severity == "CRITICAL":
                     summary["critical"] += 1
                 elif severity == "HIGH":
@@ -56,7 +55,6 @@ class TrivyParserService:
                     summary["low"] += 1
                 summary["total"] += 1
 
-                # Build ScanResultCreate model
                 scan_item = ScanResultCreate(
                     pipeline_run_id=pipeline_run_id,
                     scanner_name="Trivy",
@@ -81,6 +79,5 @@ class TrivyParserService:
             raw_data = json.loads(json_str)
             return TrivyParserService.parse_scan_report(pipeline_run_id, raw_data)
         except Exception as e:
-            # Fallback if invalid JSON
             summary = {"critical": 0, "high": 0, "medium": 0, "low": 0, "total": 0, "error": str(e)}
             return summary, []

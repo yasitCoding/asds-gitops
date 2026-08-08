@@ -93,7 +93,6 @@ export default function PipelineDetailPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        {/* Back Link */}
         <Link
           href="/pipelines"
           className="inline-flex items-center gap-2 text-xs font-semibold text-[#86868b] hover:text-[#1d1d1f] transition-colors"
@@ -101,7 +100,6 @@ export default function PipelineDetailPage() {
           <ArrowLeft className="h-4 w-4" /> Back to Pipeline Runs
         </Link>
 
-        {/* Overview Header Banner */}
         <div className="p-6 rounded-2xl apple-card space-y-4">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div className="space-y-1">
@@ -130,7 +128,6 @@ export default function PipelineDetailPage() {
             </div>
           </div>
 
-          {/* Deployment Info if Synced */}
           {run.deployment && (
             <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-between gap-4 text-xs text-emerald-800">
               <div className="flex items-center gap-2 font-mono font-medium">
@@ -151,7 +148,6 @@ export default function PipelineDetailPage() {
           )}
         </div>
 
-        {/* Section 1: OPA Policy Violations & Remediation Guide */}
         {run.violations.length > 0 && (
           <div className="p-6 rounded-2xl bg-rose-50/60 border border-rose-200 space-y-4">
             <h3 className="text-base font-bold text-rose-700 flex items-center gap-2 tracking-tight">
@@ -180,7 +176,6 @@ export default function PipelineDetailPage() {
                       </div>
                     </div>
 
-                    {/* Remediation Snippet */}
                     <div className="space-y-1.5 pt-1">
                       <span className="text-[11px] font-bold text-amber-700 flex items-center gap-1">
                         <BookOpen className="h-3.5 w-3.5" /> {guide.title}
@@ -196,7 +191,6 @@ export default function PipelineDetailPage() {
           </div>
         )}
 
-        {/* Section 2: Trivy Scan Results Table */}
         <div className="p-6 rounded-2xl apple-card space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-base font-bold text-[#1d1d1f] flex items-center gap-2 tracking-tight">
@@ -265,7 +259,6 @@ export default function PipelineDetailPage() {
           )}
         </div>
 
-        {/* Section 3: Test Output Log Terminal */}
         {run.testOutput && (
           <div className="p-6 rounded-2xl apple-card space-y-3">
             <h3 className="text-sm font-bold text-[#1d1d1f] flex items-center gap-2 tracking-tight">

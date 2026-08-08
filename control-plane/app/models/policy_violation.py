@@ -13,7 +13,6 @@ class PolicyViolation(PolicyViolationBase, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
-    # Relationships
     pipeline_run: Optional["PipelineRun"] = Relationship(back_populates="policy_violations")
     policy_rule: Optional["PolicyRule"] = Relationship(back_populates="violations")
 

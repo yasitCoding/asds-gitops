@@ -35,7 +35,6 @@ async def health_check(
     }
     is_healthy = True
 
-    # 1. Test PostgreSQL DB Connectivity
     try:
         db_session.exec(text("SELECT 1"))
         health_status["services"]["database"] = "connected"
@@ -44,9 +43,7 @@ async def health_check(
         health_status["services"]["database"] = "unreachable"
         is_healthy = False
 
-    # 2. Test OPA Engine Connectivity
     opa_url = os.getenv("OPA_URL", "http://localhost:8181/v1/data").rstrip("/")
-    # Convert OPA data URL to base URL for health check
     opa_health_url = opa_url.replace("/v1/data", "") + "/health"
     try:
         async with httpx.AsyncClient(timeout=3.0) as client:

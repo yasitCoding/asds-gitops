@@ -105,7 +105,6 @@ class PipelineRecorderService:
             policy_name = item.get("policy", "")
             detail = item.get("detail", "Policy check failed")
 
-            # Match policy rule ID if exists
             rule_statement = select(PolicyRule).where(PolicyRule.rule_name.ilike(f"%{policy_name}%"))
             policy_rule = self.session.exec(rule_statement).first()
             rule_id = policy_rule.id if policy_rule else None
